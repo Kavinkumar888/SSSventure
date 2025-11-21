@@ -25,9 +25,10 @@ const Header = () => {
 
   const cartCount = cartItems?.reduce((total, item) => total + item.quantity, 0);
 
-  // Synchronized Navigation structure
+  // Synchronized Navigation structure - UPDATED WITH GFARMENT
   const navItems = [
     { path: "/", label: "Home", key: "home" },
+    { path: "/gfarment", label: "Gfarment Manufacturing", key: "gfarment" }, // ✅ ADDED HERE
     { 
       path: "/products?category=fabrics%20structure",
       label: "Fabrics Structure",
@@ -122,13 +123,16 @@ const Header = () => {
         { path: "/products?category=fabrics%20finish&subCategory=greige", label: "Greige", key: "greige-finish" },
         { path: "/products?category=fabrics%20finish&subCategory=rfd", label: "RFD", key: "rfd-finish" },
         { path: "/products?category=fabrics%20finish&subCategory=solid", label: "Solid", key: "solid-finish" },
-        { path: "/products?category=fabrics%20finish&subCategory=printed", label: "Printed", key: "printed-finish",
-          subItems:[
-               {path:"/products?fabrics%20finish&subCatwgory=tableprinting",label:"Table Printing", key:"Tableprinting-printed"},
-                {path:"/products?fabrics%20finish&subCatwgory=rotary",label:"Rotary", key:"rotary-printed"},
-                 {path:"/products?fabrics%20finish&subCatwgory=digitalprinting",label:"Digital printing", key:"digitalprinting-printed"},
+        { 
+          path: "/products?category=fabrics%20finish&subCategory=printed", 
+          label: "Printed", 
+          key: "printed-finish",
+          subItems: [
+            { path: "/products?category=fabrics%20finish&subCategory=table%20printing", label: "Table Printing", key: "table-printing" },
+            { path: "/products?category=fabrics%20finish&subCategory=rotary", label: "Rotary", key: "rotary-printed" },
+            { path: "/products?category=fabrics%20finish&subCategory=digital%20printing", label: "Digital Printing", key: "digital-printing" },
           ]
-         }
+        }
       ]
     }
   ];
@@ -174,8 +178,11 @@ const Header = () => {
     });
   };
 
-  // Enhanced dropdown for Woven Fabrics with nested categories
-  const renderDropdown = (subItems, parentPath, isWovenFabrics = false) => {
+  // Enhanced dropdown for Woven Fabrics and Fabrics Finish with nested categories
+  const renderDropdown = (subItems, parentPath, isNestedCategory = false) => {
+    const isWovenFabrics = parentPath.includes('woven%20fabrics');
+    const isFabricsFinish = parentPath.includes('fabrics%20finish');
+    
     return (
       <div className={`absolute top-full left-0 mt-1 bg-white shadow-xl rounded-lg border border-gray-200 z-50 py-2 ${
         isWovenFabrics ? 'w-80 max-h-96 overflow-y-auto' : 'w-64'
@@ -193,10 +200,10 @@ const Header = () => {
         
         {subItems.map((subItem) => (
           <div key={subItem.key} className="relative">
-            {subItem.subItems && isWovenFabrics ? (
-              // Nested menu - Woven Fabrics only (Greige, RFD, Solid, Printed)
+            {subItem.subItems && (isWovenFabrics || isFabricsFinish) ? (
+              // Nested menu - Woven Fabrics & Fabrics Finish Printed
               <div className="border-b border-gray-100 last:border-b-0">
-                {/* Clickable parent item (Greige, RFD, etc.) */}
+                {/* Clickable parent item (Greige, RFD, Printed, etc.) */}
                 <div className="flex items-center justify-between px-4 py-3 font-semibold text-gray-900 text-sm bg-gray-50 border-b border-gray-200 hover:bg-gray-100 transition-colors group">
                   <Link
                     to={subItem.path}
@@ -207,7 +214,7 @@ const Header = () => {
                   </Link>
                   <ChevronRight size={14} className="text-gray-500 group-hover:rotate-90 transition-transform" />
                 </div>
-                {/* Nested items - Fabric types */}
+                {/* Nested items - Fabric types or Printing types */}
                 <div className="py-1">
                   {subItem.subItems.map((nestedItem) => (
                     <Link
@@ -244,6 +251,7 @@ const Header = () => {
     const isExpanded = expandedItems.has(item.key);
     const isNested = level > 0;
     const isWovenFabrics = item.key === 'woven-fabrics';
+    const isFabricsFinish = item.key === 'fabrics-finish';
 
     return (
       <div key={item.key} className={`${isNested ? 'ml-3' : ''}`}>
@@ -251,7 +259,7 @@ const Header = () => {
           isActive(item.path)
             ? "bg-black text-white"
             : "text-gray-700 hover:bg-gray-50"
-        } ${isWovenFabrics ? 'bg-blue-50 border-blue-200' : ''}`}>
+        } ${(isWovenFabrics || isFabricsFinish) ? 'bg-blue-50 border-blue-200' : ''}`}>
           <Link
             to={item.path}
             onClick={() => setIsMobileMenuOpen(false)}
@@ -288,7 +296,7 @@ const Header = () => {
             )}
             
             {/* Subitems with scroll for Woven Fabrics */}
-            <div className={`${isWovenFabrics ? 'max-h-60 overflow-y-auto' : ''}`}>
+            <div className={`${(isWovenFabrics || isFabricsFinish) ? 'max-h-60 overflow-y-auto' : ''}`}>
               {item.subItems.map((subItem) => (
                 <div key={subItem.key}>
                   {subItem.subItems ? (
@@ -408,17 +416,17 @@ const Header = () => {
                     <ChevronDown size={16} className="transition-transform group-hover:rotate-180" />
                   </Link>
 
-                  {/* FIXED: Woven Fabrics has enhanced nested dropdown */}
+                  {/* FIXED: Woven Fabrics & Fabrics Finish have enhanced nested dropdown */}
                   {activeDropdown === item.label && (
                     renderDropdown(
                       item.subItems, 
                       item.path, 
-                      item.key === 'woven-fabrics'
+                      item.key === 'woven-fabrics' || item.key === 'fabrics-finish'
                     )
                   )}
                 </div>
               ) : (
-                // Regular link
+                // Regular link - INCLUDES GFARMENT MANUFACTURING
                 <Link
                   to={item.path}
                   className={`font-semibold py-2 px-4 rounded-lg transition-all duration-300 relative ${
@@ -535,7 +543,7 @@ const Header = () => {
             />
           </form>
 
-          {/* Mobile Navigation Links */}
+          {/* Mobile Navigation Links - INCLUDES GFARMENT MANUFACTURING */}
           <div className="space-y-2">
             {navItems.map((item) => renderMobileNavItem(item))}
 

@@ -1,64 +1,110 @@
-// src/services/productapi.js
-import api from "./api";
+// src/api/productAPI.js
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// Helper function for API calls
+const apiRequest = async (endpoint, options = {}) => {
+  try {
+    const url = `${BASE_URL}${endpoint}`;
+    console.log(`🔄 API Call: ${options.method || 'GET'} ${url}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    console.log(`📡 Response Status: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ API Error ${response.status}:`, errorText);
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ API Success:', data);
+    return data;
+  } catch (error) {
+    console.error('🚨 API Request Failed:', error);
+    throw error;
+  }
+};
 
 export const productAPI = {
-  // ✅ FIXED: correct backend route
+  // Health check
   healthCheck: async () => {
-    const response = await api.get("/api/health");
-    return response.data;
+    return await apiRequest('/api/health');
   },
 
-  // ✅ FIXED: correct route + safe return
+  // Get all products
   getProducts: async () => {
-    const response = await api.get("/api/products");
-    return response.data.data || [];
+    const data = await apiRequest('/api/products');
+    return data.data || [];
   },
 
-  // ✅ FIXED: correct route + FormData handling
+  // Create product
   createProduct: async (productData) => {
     const formData = new FormData();
-
-    Object.keys(productData).forEach((key) => {
-      if (key === "specifications") {
+    
+    console.log('📦 Creating product:', productData);
+    
+    // Append all fields
+    Object.keys(productData).forEach(key => {
+      if (key === 'specifications') {
         formData.append(key, JSON.stringify(productData[key]));
-      } else if (key === "tags" && Array.isArray(productData[key])) {
-        formData.append(key, productData[key].join(","));
+      } else if (key === 'image' && productData[key]) {
+        formData.append('image', productData[key]);
+        console.log('📸 Image attached:', productData[key].name);
       } else {
         formData.append(key, productData[key]);
       }
     });
 
-    const response = await api.post("/api/products", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    // Log form data contents
+    for (let [key, value] of formData.entries()) {
+      console.log(`📝 FormData: ${key} =`, value);
+    }
 
-    return response.data;
+    return await apiRequest('/api/products', {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type header for FormData - browser will set it automatically
+    });
   },
 
-  // ✅ FIXED: correct route + FormData handling
+  // Update product
   updateProduct: async (id, productData) => {
     const formData = new FormData();
-
-    Object.keys(productData).forEach((key) => {
-      if (key === "specifications") {
+    
+    Object.keys(productData).forEach(key => {
+      if (key === 'specifications') {
         formData.append(key, JSON.stringify(productData[key]));
-      } else if (key === "tags" && Array.isArray(productData[key])) {
-        formData.append(key, productData[key].join(","));
+      } else if (key === 'image' && productData[key]) {
+        formData.append('image', productData[key]);
       } else {
         formData.append(key, productData[key]);
       }
     });
 
-    const response = await api.put(`/api/products/${id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+    return await apiRequest(`/api/products/${id}`, {
+      method: 'PUT',
+      body: formData,
     });
-
-    return response.data;
   },
 
-  // ✅ FIXED: correct route
+  // Delete product
   deleteProduct: async (id) => {
-    const response = await api.delete(`/api/products/${id}`);
-    return response.data;
+    return await apiRequest(`/api/products/${id}`, {
+      method: 'DELETE',
+    });
   },
+
+  // Test connection
+  testConnection: async () => {
+    return await apiRequest('/api/test');
+  }
 };
+
+export default productAPI;

@@ -27,7 +27,7 @@ const AdminPanel = () => {
 
   const { user, logout } = useAuth();
 
-  // Synchronized Categories structure matching Header component
+  // Categories structure
   const categories = {
     'fabrics structure': {
       name: 'Fabrics Structure',
@@ -44,18 +44,6 @@ const AdminPanel = () => {
     'woven fabrics': {
       name: 'Woven Fabrics',
       subCategories: {
-        // Direct fabric types
-        'silk': { name: 'Silk', nested: [] },
-        'cotton': { name: 'Cotton', nested: [] },
-        'viscose': { name: 'Viscose', nested: [] },
-        'modal': { name: 'Modal', nested: [] },
-        'linen': { name: 'Linen', nested: [] },
-        'bamboo': { name: 'Bamboo', nested: [] },
-        'banana': { name: 'Banana', nested: [] },
-        'hemp': { name: 'Hemp', nested: [] },
-        'cotton linen blend': { name: 'Cotton Linen Blend', nested: [] },
-        
-        // Process types
         'greige': {
           name: 'Greige',
           nested: [
@@ -92,12 +80,15 @@ const AdminPanel = () => {
         'greige': { name: 'Greige', nested: [] },
         'rfd': { name: 'RFD', nested: [] },
         'solid': { name: 'Solid', nested: [] },
-        'printed': { name: 'Printed', nested: [] }
+        'printed': { 
+          name: 'Printed', 
+          nested: ['table printing', 'rotary', 'digital printing'] 
+        }
       }
     }
   };
 
-  // Enhanced URL MATCHING: Function to generate product URLs that match header navigation
+  // Generate product URL
   const generateProductUrl = (product) => {
     if (!product.mainCategory && !product.subCategory) {
       return '/products';
@@ -106,35 +97,30 @@ const AdminPanel = () => {
     const baseUrl = '/products?';
     const params = new URLSearchParams();
 
-    // Add main category
     if (product.mainCategory) {
       params.append('category', product.mainCategory);
     }
 
-    // Handle different main categories
     if (product.mainCategory === 'fabrics structure' && product.subCategory) {
       params.append('subCategory', product.subCategory);
     } 
     else if (product.mainCategory === 'woven fabrics' && product.subCategory) {
-      // Check if subCategory is a process type (greige, rfd, solid, printed)
-      if (['greige', 'rfd', 'solid', 'printed'].includes(product.subCategory)) {
-        params.append('type', product.subCategory);
-        if (product.nestedCategory) {
-          params.append('fabricType', product.nestedCategory);
-        }
-      } else {
-        // Direct fabric type (silk, cotton, etc.)
-        params.append('subCategory', product.subCategory);
+      params.append('type', product.subCategory);
+      if (product.nestedCategory) {
+        params.append('fabricType', product.nestedCategory);
       }
     } 
     else if (product.mainCategory === 'fabrics finish' && product.subCategory) {
       params.append('subCategory', product.subCategory);
+      if (product.nestedCategory) {
+        params.append('nestedCategory', product.nestedCategory);
+      }
     }
 
     return baseUrl + params.toString();
   };
 
-  // BACKEND: Fetch products from backend
+  // Check backend status and fetch products
   useEffect(() => {
     checkBackendStatus();
     fetchProducts();
@@ -142,12 +128,13 @@ const AdminPanel = () => {
 
   const checkBackendStatus = async () => {
     try {
-      await productAPI.healthCheck();
+      console.log('🔍 Checking backend connection...');
+      const health = await productAPI.healthCheck();
+      console.log('✅ Backend connected successfully:', health);
       setBackendStatus('connected');
-      console.log('✅ Backend connected successfully');
     } catch (error) {
-      setBackendStatus('disconnected');
       console.error('❌ Backend connection failed:', error);
+      setBackendStatus('disconnected');
     }
   };
 
@@ -156,27 +143,35 @@ const AdminPanel = () => {
       setLoading(true);
       console.log('🔄 Fetching products from backend...');
       
-      const productsData = await productAPI.getProducts();
-      setProducts(productsData);
-      console.log('✅ Products loaded from backend:', productsData.length);
+      await productAPI.healthCheck();
+      console.log('✅ Backend is healthy');
       
+      const productsData = await productAPI.getProducts();
+      console.log('✅ Products loaded from backend:', productsData);
+      
+      setProducts(productsData);
       localStorage.setItem('adminProducts', JSON.stringify(productsData));
       
     } catch (error) {
-      console.error('❌ Error fetching from backend, using localStorage:', error);
+      console.error('❌ Backend connection failed:', error);
       
+      // Fallback to localStorage
       try {
         const savedProducts = localStorage.getItem('adminProducts');
         if (savedProducts) {
           const parsedProducts = JSON.parse(savedProducts);
           setProducts(parsedProducts);
           console.log('📦 Loaded products from localStorage:', parsedProducts.length);
+        } else {
+          console.log('📦 No products found in localStorage');
+          setProducts([]);
         }
       } catch (localError) {
         console.error('Error loading from localStorage:', localError);
+        setProducts([]);
       }
       
-      alert('Backend connection failed. Using local storage.');
+      setBackendStatus('disconnected');
     } finally {
       setLoading(false);
     }
@@ -261,7 +256,7 @@ const AdminPanel = () => {
     if (fileInput) fileInput.value = '';
   };
 
-  // BACKEND: Handle form submit with backend
+  // Handle form submit with backend
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -284,10 +279,10 @@ const AdminPanel = () => {
         finish: formData.finish
       };
 
-      // FIXED: Price is now optional - use 0 if empty
+      // Price is optional - use 0 if empty
       const productPrice = formData.price ? parseFloat(formData.price) : 0;
 
-      // URL MATCHING: Generate URL for this product
+      // Generate URL for this product
       const productUrl = generateProductUrl({
         mainCategory: formData.mainCategory,
         subCategory: formData.subCategory,
@@ -298,7 +293,6 @@ const AdminPanel = () => {
       const productFormData = {
         name: formData.name,
         price: productPrice,
-        description: formData.description,
         mainCategory: formData.mainCategory,
         subCategory: formData.subCategory,
         nestedCategory: formData.nestedCategory,
@@ -311,7 +305,7 @@ const AdminPanel = () => {
         finish: formData.finish,
         image: formData.image,
         specifications: specifications,
-        productUrl: productUrl // Store the generated URL
+        productUrl: productUrl
       };
 
       console.log('📤 Sending product data to backend...');
@@ -319,7 +313,9 @@ const AdminPanel = () => {
 
       let result;
       if (editingProduct) {
-        result = await productAPI.updateProduct(editingProduct.id, productFormData);
+        // Use _id for MongoDB updates
+        const productId = editingProduct._id || editingProduct.id;
+        result = await productAPI.updateProduct(productId, productFormData);
         alert('Product updated successfully!');
       } else {
         result = await productAPI.createProduct(productFormData);
@@ -336,6 +332,7 @@ const AdminPanel = () => {
       console.error('❌ Error saving product:', error);
       alert('Error saving product: ' + error.message);
       
+      // Fallback to local storage
       try {
         await handleSubmitLocal(e);
       } catch (localError) {
@@ -363,14 +360,14 @@ const AdminPanel = () => {
       } catch (error) {
         console.error('Image conversion failed:', error);
       }
-    } else if (editingProduct && editingProduct.image) {
-      imageUrl = editingProduct.image;
+    } else if (editingProduct && editingProduct.imageUrl) {
+      imageUrl = editingProduct.imageUrl;
     }
 
     const mainCategoryDisplay = categories[formData.mainCategory]?.name || formData.mainCategory;
     const subCategoryDisplay = categories[formData.mainCategory]?.subCategories[formData.subCategory]?.name || formData.subCategory;
 
-    // URL MATCHING: Generate URL for local storage too
+    // Generate URL for local storage too
     const productUrl = generateProductUrl({
       mainCategory: formData.mainCategory,
       subCategory: formData.subCategory,
@@ -381,6 +378,7 @@ const AdminPanel = () => {
 
     const productData = {
       id: editingProduct ? editingProduct.id : 'admin-' + Date.now().toString(),
+      _id: editingProduct ? editingProduct._id : undefined,
       name: formData.name,
       price: productPrice,
       description: formData.description,
@@ -399,8 +397,8 @@ const AdminPanel = () => {
         weave: formData.weave,
         finish: formData.finish,
       },
-      image: imageUrl,
-      productUrl: productUrl, // Store URL for local products too
+      imageUrl: imageUrl,
+      productUrl: productUrl,
       createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       inStock: true
@@ -424,7 +422,7 @@ const AdminPanel = () => {
     alert('Product saved locally (Backend offline)');
   };
 
-  // BACKEND: Handle delete with backend
+  // Handle delete with backend
   const handleDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
@@ -458,6 +456,22 @@ const AdminPanel = () => {
     }
   };
 
+  // Test backend connection manually
+  const testBackendConnection = async () => {
+    console.log('🧪 Testing backend connection...');
+    try {
+      await productAPI.healthCheck();
+      const products = await productAPI.getProducts();
+      console.log('✅ Backend tests passed!', products);
+      alert('Backend connection successful!');
+      setBackendStatus('connected');
+    } catch (error) {
+      console.error('❌ Backend tests failed:', error);
+      alert('Backend connection failed: ' + error.message);
+      setBackendStatus('disconnected');
+    }
+  };
+
   // Helper function to format category names for display
   const formatCategoryName = (name) => {
     return name.split(' ').map(word => 
@@ -465,17 +479,29 @@ const AdminPanel = () => {
     ).join(' ');
   };
 
-  // Handle image URL - convert relative paths to absolute
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/300x300/4A5568/FFFFFF?text=Product+Image';
-    
-    if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
-      return imagePath;
-    } else if (imagePath.startsWith('/uploads/')) {
-      return `http://localhost:5000${imagePath}`;
-    } else {
-      return imagePath;
+  // Handle image URL - support both MongoDB base64 and file URLs
+  const getImageUrl = (product) => {
+    // If product has imageUrl (from MongoDB base64 conversion)
+    if (product.imageUrl) {
+      return product.imageUrl;
     }
+    
+    // If product has image data (direct MongoDB binary)
+    if (product.image && product.image.data) {
+      return `data:${product.image.contentType};base64,${product.image.data}`;
+    }
+    
+    // If product has image path (file system)
+    if (product.image) {
+      if (product.image.startsWith('http') || product.image.startsWith('data:')) {
+        return product.image;
+      } else if (product.image.startsWith('/uploads/')) {
+        return `http://localhost:5000${product.image}`;
+      }
+    }
+    
+    // Default placeholder
+    return 'https://via.placeholder.com/300x300/4A5568/FFFFFF?text=Product+Image';
   };
 
   // Format price for display
@@ -484,15 +510,6 @@ const AdminPanel = () => {
       return 'Price on request';
     }
     return `₹${typeof price === 'number' ? price.toLocaleString() : price}`;
-  };
-
-  // URL MATCHING: Display product URL in admin panel
-  const displayProductUrl = (product) => {
-    if (product.productUrl) {
-      return product.productUrl;
-    }
-    // Generate URL for existing products that don't have it
-    return generateProductUrl(product);
   };
 
   return (
@@ -504,10 +521,16 @@ const AdminPanel = () => {
             <h1 className="text-3xl font-bold text-gray-800">Product Management</h1>
             <p className="text-gray-600">Welcome, {user?.name}</p>
             <p className="text-sm text-gray-500">
-              Categories synced with header navigation
+              MongoDB Image Storage Enabled
             </p>
           </div>
-          <div>
+          <div className="flex gap-2">
+            <button
+              onClick={testBackendConnection}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-600 transition-colors border border-purple-500 text-sm"
+            >
+              Test Backend
+            </button>
             <button
               onClick={handleLogout}
               className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600 transition-colors border border-gray-600"
@@ -515,6 +538,33 @@ const AdminPanel = () => {
               Logout
             </button>
           </div>
+        </div>
+        
+        {/* Backend Status Indicator */}
+        <div className={`mb-6 p-4 rounded-lg border ${
+          backendStatus === 'connected' 
+            ? 'bg-green-50 border-green-200 text-green-800' 
+            : backendStatus === 'disconnected'
+            ? 'bg-red-50 border-red-200 text-red-800'
+            : 'bg-yellow-50 border-yellow-200 text-yellow-800'
+        }`}>
+          <div className="flex items-center">
+            <span className={`w-3 h-3 rounded-full mr-2 ${
+              backendStatus === 'connected' ? 'bg-green-500' :
+              backendStatus === 'disconnected' ? 'bg-red-500' :
+              'bg-yellow-500'
+            }`}></span>
+            <span className="font-medium">
+              {backendStatus === 'connected' && '✅ MongoDB Backend Connected - Live Mode'}
+              {backendStatus === 'disconnected' && '❌ Backend Offline - Local Mode'}
+              {backendStatus === 'checking' && '🔄 Checking Backend Connection...'}
+            </span>
+          </div>
+          <p className="text-sm mt-1">
+            {backendStatus === 'connected' && 'Images are being stored in MongoDB as binary data'}
+            {backendStatus === 'disconnected' && 'Products are being saved locally only'}
+            {backendStatus === 'checking' && 'Testing connection to MongoDB backend...'}
+          </p>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -572,7 +622,7 @@ const AdminPanel = () => {
                 </div>
               </div>
 
-              {/* Category Selection - 3 Levels */}
+              {/* Category Selection */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -596,7 +646,7 @@ const AdminPanel = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sub Category *
+                    {formData.mainCategory === 'woven fabrics' ? 'Process Type *' : 'Sub Category *'}
                   </label>
                   <select
                     name="subCategory"
@@ -606,7 +656,7 @@ const AdminPanel = () => {
                     disabled={!formData.mainCategory}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">Select Sub Category</option>
+                    <option value="">Select {formData.mainCategory === 'woven fabrics' ? 'Process Type' : 'Sub Category'}</option>
                     {formData.mainCategory && Object.entries(categories[formData.mainCategory]?.subCategories || {}).map(([key, subCategory]) => (
                       <option key={key} value={key}>
                         {subCategory.name}
@@ -617,7 +667,7 @@ const AdminPanel = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nested Category
+                    {formData.mainCategory === 'woven fabrics' ? 'Fabric Type' : 'Nested Category'}
                   </label>
                   <select
                     name="nestedCategory"
@@ -626,7 +676,9 @@ const AdminPanel = () => {
                     disabled={!formData.subCategory || !categories[formData.mainCategory]?.subCategories[formData.subCategory]?.nested?.length}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">Select Nested Category</option>
+                    <option value="">
+                      {formData.mainCategory === 'woven fabrics' ? 'Select Fabric Type' : 'Select Nested Category'}
+                    </option>
                     {formData.mainCategory && formData.subCategory && 
                      categories[formData.mainCategory]?.subCategories[formData.subCategory]?.nested?.map((nestedCat) => (
                       <option key={nestedCat} value={nestedCat}>
@@ -806,7 +858,7 @@ const AdminPanel = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-800">
                 Existing Products ({products.length})
-                {backendStatus === 'connected' && <span className="text-green-600 text-sm ml-2">● Live</span>}
+                {backendStatus === 'connected' && <span className="text-green-600 text-sm ml-2">● MongoDB</span>}
                 {backendStatus === 'disconnected' && <span className="text-red-600 text-sm ml-2">● Local</span>}
               </h2>
               <div className="flex gap-2">
@@ -821,15 +873,15 @@ const AdminPanel = () => {
             
             <div className="space-y-4 max-h-[600px] overflow-y-auto">
               {products.map((product) => (
-                <div key={product.id} className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                <div key={product._id || product.id} className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
                   editingProduct?.id === product.id ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'
                 }`}>
                   <div className="flex items-start space-x-4">
                     <SimpleImage
-                      src={getImageUrl(product.image)}
+                      src={getImageUrl(product)}
                       alt={product.name}
                       className="w-16 h-16 object-cover rounded flex-shrink-0 border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => window.open(getImageUrl(product.image), '_blank')}
+                      onClick={() => window.open(getImageUrl(product), '_blank')}
                     />
                     
                     <div className="flex-1 min-w-0">
@@ -857,7 +909,7 @@ const AdminPanel = () => {
                         <span className={`text-xs px-2 py-1 rounded border ${
                           backendStatus === 'connected' ? 'bg-green-600 text-white border-green-700' : 'bg-gray-600 text-white border-gray-700'
                         }`}>
-                          {backendStatus === 'connected' ? 'Server' : 'Local'}
+                          {backendStatus === 'connected' ? 'MongoDB' : 'Local'}
                         </span>
                         {product.updatedAt && (
                           <span className="bg-green-600 text-white text-xs px-2 py-1 rounded border border-green-700">
@@ -877,6 +929,11 @@ const AdminPanel = () => {
                           <span> • Edited: {new Date(product.updatedAt).toLocaleDateString()}</span>
                         )}
                       </p>
+                      {product.productUrl && (
+                        <p className="text-xs text-blue-600 mt-1 truncate">
+                          URL: {product.productUrl}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <button
@@ -886,7 +943,7 @@ const AdminPanel = () => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(product.id)}
+                        onClick={() => handleDelete(product._id || product.id)}
                         className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm transition-colors border border-red-500"
                       >
                         Delete

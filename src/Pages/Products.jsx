@@ -2,12 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { gsap } from "gsap";
-import { 
-  categories, 
-  subCategories, 
-  allProducts,
-  getProductsByCategory 
-} from "../data/products";
+import { allProducts } from "../data/products";
 import { useCart } from "../context/CartContext";
 
 const Products = () => {
@@ -22,32 +17,27 @@ const Products = () => {
   const location = useLocation();
   const { addToCart } = useCart();
 
-  // Get category, subcategory and search from URL
+  // Get all URL parameters
   const queryParams = new URLSearchParams(location.search);
   const urlCategory = queryParams.get("category");
   const urlSubCategory = queryParams.get("subCategory");
   const urlType = queryParams.get("type");
   const urlFabricType = queryParams.get("fabricType");
+  const urlNestedCategory = queryParams.get("nestedCategory");
   const searchTerm = queryParams.get("search")?.toLowerCase() || "";
 
   // Check if current category needs vertical layout
   const needsVerticalLayout = () => {
     return urlCategory && (
-      urlCategory.toLowerCase() === 'fabric_structure' || 
-      urlCategory.toLowerCase() === 'fabric structure' ||
-      urlCategory.toLowerCase().includes('fabric_structure') ||
-      urlCategory.toLowerCase().includes('fabric structure') ||
-      urlCategory.toLowerCase() === 'fabric_finish' ||
-      urlCategory.toLowerCase() === 'woven_fabric' ||
-      urlCategory.toLowerCase() === 'sustainablefabric' ||
-      urlCategory.toLowerCase() === 'greigefabric' ||
-      urlCategory.toLowerCase() === 'buyswatches'
+      urlCategory.toLowerCase() === 'fabrics structure' || 
+      urlCategory.toLowerCase() === 'fabrics finish'
     );
   };
 
-  // Enhanced image URL handler
+  // FIXED: Enhanced image URL handler with null/undefined check
   const getImageUrl = (imageSrc) => {
-    if (!imageSrc) {
+    // If imageSrc is null, undefined, or not a string, return placeholder
+    if (!imageSrc || typeof imageSrc !== 'string') {
       return 'https://via.placeholder.com/400x400/4A5568/FFFFFF?text=Product+Image';
     }
 
@@ -83,51 +73,73 @@ const Products = () => {
     e.target.className = e.target.className + ' bg-gray-200';
   };
 
-  // Combine static products and admin products with synchronized filtering
-  useEffect(() => {
-    // Get admin products from localStorage
-    const adminProducts = JSON.parse(localStorage.getItem('adminProducts') || '[]');
-    
-    // Combine both product sources
-    const allAvailableProducts = [...allProducts, ...adminProducts];
+  // PERFECT MATCH FILTERING LOGIC - Header URLs to Product Data
+  const filterProducts = (products) => {
+    let filtered = products;
 
-    let filtered = allAvailableProducts;
+    // If no category parameters, return all products
+    if (!urlCategory && !searchTerm) {
+      return filtered;
+    }
 
-    // Enhanced filtering logic for synchronized URLs
+    // Enhanced filtering logic for PERFECT URL matching
     if (urlCategory) {
       filtered = filtered.filter(product => {
-        const productCategory = 
-          product.category?.toLowerCase() || 
-          product.mainCategory?.toLowerCase() ||
-          product.specifications?.category?.toLowerCase();
+        const productMainCategory = product.mainCategory?.toLowerCase() || product.category?.toLowerCase();
+        const productSubCategory = product.subCategory?.toLowerCase();
+        const productNestedCategory = product.nestedCategory?.toLowerCase();
         
         const urlCategoryLower = urlCategory.toLowerCase();
-        
-        // Main category match
-        const mainCategoryMatch = productCategory === urlCategoryLower;
+        const urlSubCategoryLower = urlSubCategory?.toLowerCase();
+        const urlTypeLower = urlType?.toLowerCase();
+        const urlFabricTypeLower = urlFabricType?.toLowerCase();
+        const urlNestedCategoryLower = urlNestedCategory?.toLowerCase();
 
-        // For woven fabrics with type parameter
-        if (urlCategoryLower === 'woven fabrics') {
-          if (urlType) {
-            // Match process type (greige, rfd, solid, printed)
-            const processMatch = product.subCategory?.toLowerCase() === urlType.toLowerCase();
-            if (urlFabricType) {
-              // Match specific fabric type within process
-              return processMatch && product.nestedCategory?.toLowerCase() === urlFabricType.toLowerCase();
-            }
-            return processMatch;
-          } else if (urlSubCategory) {
-            // Match direct fabric type (silk, cotton, etc.)
-            return product.subCategory?.toLowerCase() === urlSubCategory.toLowerCase();
+        // Main category must match
+        if (productMainCategory !== urlCategoryLower) {
+          return false;
+        }
+
+        // FABRICS STRUCTURE: /products?category=fabrics structure&subCategory=plain weaves
+        if (urlCategoryLower === 'fabrics structure') {
+          if (urlSubCategoryLower) {
+            return productSubCategory === urlSubCategoryLower;
           }
+          return true; // Show all fabrics structure if no subcategory
         }
 
-        // For fabrics structure and fabrics finish
-        if ((urlCategoryLower === 'fabrics structure' || urlCategoryLower === 'fabrics finish') && urlSubCategory) {
-          return mainCategoryMatch && product.subCategory?.toLowerCase() === urlSubCategory.toLowerCase();
+        // WOVEN FABRICS: Complex matching for process types and fabric types
+        if (urlCategoryLower === 'woven fabrics') {
+          // Case 1: Direct fabric type - /products?category=woven fabrics&subCategory=cotton
+          if (urlSubCategoryLower && !urlTypeLower) {
+            return productSubCategory === urlSubCategoryLower;
+          }
+          
+          // Case 2: Process type with fabric type - /products?category=woven fabrics&type=greige&fabricType=cotton
+          if (urlTypeLower && urlFabricTypeLower) {
+            return productSubCategory === urlTypeLower && productNestedCategory === urlFabricTypeLower;
+          }
+          
+          // Case 3: Process type only - /products?category=woven fabrics&type=greige
+          if (urlTypeLower && !urlFabricTypeLower) {
+            return productSubCategory === urlTypeLower;
+          }
+          
+          return true; // Show all woven fabrics if no specific filters
         }
 
-        return mainCategoryMatch;
+        // FABRICS FINISH: /products?category=fabrics finish&subCategory=printed&nestedCategory=digital printing
+        if (urlCategoryLower === 'fabrics finish') {
+          if (urlSubCategoryLower && urlNestedCategoryLower) {
+            return productSubCategory === urlSubCategoryLower && productNestedCategory === urlNestedCategoryLower;
+          }
+          if (urlSubCategoryLower && !urlNestedCategoryLower) {
+            return productSubCategory === urlSubCategoryLower;
+          }
+          return true; // Show all fabrics finish if no subcategory
+        }
+
+        return true; // Default case
       });
     }
 
@@ -141,6 +153,7 @@ const Products = () => {
           product.category?.toLowerCase().includes(searchTerm) ||
           product.subCategory?.toLowerCase().includes(searchTerm) ||
           product.mainCategory?.toLowerCase().includes(searchTerm) ||
+          product.nestedCategory?.toLowerCase().includes(searchTerm) ||
           product.specifications?.composition?.toLowerCase().includes(searchTerm) ||
           product.specifications?.weave?.toLowerCase().includes(searchTerm)
       );
@@ -163,6 +176,35 @@ const Products = () => {
       });
     }
 
+    return filtered;
+  };
+
+  // Combine static products and admin products with PERFECT filtering
+  useEffect(() => {
+    // Get admin products from localStorage
+    const adminProducts = JSON.parse(localStorage.getItem('adminProducts') || '[]');
+    
+    // Combine both product sources
+    const allAvailableProducts = [...allProducts, ...adminProducts];
+
+    const filtered = filterProducts(allAvailableProducts);
+
+    console.log('🔍 Filtering Results:', {
+      urlCategory,
+      urlSubCategory,
+      urlType,
+      urlFabricType,
+      urlNestedCategory,
+      totalProducts: allAvailableProducts.length,
+      filteredCount: filtered.length,
+      filteredProducts: filtered.map(p => ({
+        name: p.name,
+        mainCategory: p.mainCategory,
+        subCategory: p.subCategory,
+        nestedCategory: p.nestedCategory
+      }))
+    });
+
     setFilteredProducts(filtered);
 
     // GSAP animation
@@ -171,7 +213,7 @@ const Products = () => {
       { opacity: 0, y: 30 },
       { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }
     );
-  }, [urlCategory, urlSubCategory, urlType, urlFabricType, searchTerm]);
+  }, [urlCategory, urlSubCategory, urlType, urlFabricType, urlNestedCategory, searchTerm]);
 
   // Image Zoom Functions
   const handleImageMouseMove = (e) => {
@@ -246,19 +288,10 @@ const Products = () => {
       const categoryMap = {
         'fabrics structure': 'Fabrics Structure',
         'woven fabrics': 'Woven Fabrics',
-        'fabrics finish': 'Fabrics Finish',
-        'fabric_structure': 'Fabric Structure',
-        'fabric_finish': 'Fabric Finish',
-        'woven_fabric': 'Woven Fabric',
-        'sustainablefabric': 'Sustainable Fabric',
-        'greigefabric': 'Greige Fabric',
-        'buyswatches': 'Buy Swatches'
+        'fabrics finish': 'Fabrics Finish'
       };
       
-      const mappedName = categoryMap[urlCategory.toLowerCase()];
-      if (mappedName) return mappedName;
-      
-      return urlCategory.split(/[_\s]+/).map(word => 
+      return categoryMap[urlCategory.toLowerCase()] || urlCategory.split(/[_\s]+/).map(word => 
         word.charAt(0).toUpperCase() + word.slice(1)
       ).join(' ');
     }
@@ -291,18 +324,9 @@ const Products = () => {
         'printed': 'Printed'
       };
       
-      const mappedName = subCategoryMap[urlSubCategory.toLowerCase()];
-      
-      if (mappedName) {
-        return mappedName;
-      }
-      
-      return urlSubCategory
-        .split(/[_\s]+/)
-        .map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1)
-        )
-        .join(' ');
+      return subCategoryMap[urlSubCategory.toLowerCase()] || urlSubCategory.split(/[_\s]+/).map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
     }
     
     return null;
@@ -339,6 +363,20 @@ const Products = () => {
       };
       
       return fabricTypeMap[urlFabricType.toLowerCase()] || urlFabricType.charAt(0).toUpperCase() + urlFabricType.slice(1);
+    }
+    return null;
+  };
+
+  // Get current nested category name for display (for fabrics finish)
+  const getCurrentNestedCategoryName = () => {
+    if (urlNestedCategory) {
+      const nestedCategoryMap = {
+        'table printing': 'Table Printing',
+        'rotary': 'Rotary',
+        'digital printing': 'Digital Printing'
+      };
+      
+      return nestedCategoryMap[urlNestedCategory.toLowerCase()] || urlNestedCategory.charAt(0).toUpperCase() + urlNestedCategory.slice(1);
     }
     return null;
   };
@@ -520,51 +558,31 @@ const Products = () => {
     );
   };
 
-  // Render product tags
-  const renderTags = (product) => {
-    const tags = product.tags || [];
-    if (tags.length === 0) return null;
+  const renderCategoryBadges = (product) => {
+    const mainCategory = product.mainCategory || product.category;
+    const subCategory = product.subCategory;
+    const nestedCategory = product.nestedCategory;
 
     return (
-      <div className="flex flex-wrap gap-1 mb-3">
-        {tags.slice(0, 3).map((tag, index) => (
-          <span 
-            key={index}
-            className="px-2 py-1 bg-gray-800 text-white text-xs rounded-full border border-gray-700"
-          >
-            #{tag}
+      <div className="flex flex-col gap-2 mt-1">
+        {mainCategory && (
+          <span className="bg-white text-gray-800 text-xs px-2 py-1 rounded capitalize border border-gray-300 shadow-lg">
+            {mainCategory.replace(/([A-Z])/g, ' $1').trim()}
           </span>
-        ))}
+        )}
+        {subCategory && (
+          <span className="bg-white text-gray-800 text-xs px-2 py-1 rounded capitalize border border-gray-300 shadow-lg">
+            {subCategory}
+          </span>
+        )}
+        {nestedCategory && (
+          <span className="bg-white text-gray-800 text-xs px-2 py-1 rounded capitalize border border-gray-300 shadow-lg">
+            {nestedCategory}
+          </span>
+        )}
       </div>
     );
   };
-
-const renderCategoryBadges = (product) => {
-  const mainCategory = product.mainCategory || product.category;
-  const subCategory = product.subCategory;
-  const nestedCategory = product.nestedCategory;
-
-  return (
-    <div className="flex flex-col gap-2 mt-1">
-      {mainCategory && (
-        <span className="bg-white text-gray-800 text-xs px-2 py-1 rounded capitalize border border-gray-300 shadow-lg">
-          {mainCategory.replace(/([A-Z])/g, ' $1').trim()}
-        </span>
-      )}
-      {subCategory && (
-        <span className="bg-white text-gray-800 text-xs px-2 py-1 rounded capitalize border border-gray-300 shadow-lg">
-          {subCategory}
-        </span>
-      )}
-      {nestedCategory && (
-        <span className="bg-white text-gray-800 text-xs px-2 py-1 rounded capitalize border border-gray-300 shadow-lg">
-          {nestedCategory}
-        </span>
-      )}
-    </div>
-  );
-};
-
 
   return (
     <section ref={sectionRef} className="min-h-screen bg-gray-50 py-8 sm:py-12">
@@ -592,6 +610,12 @@ const renderCategoryBadges = (product) => {
               Fabric: {getCurrentFabricTypeName()}
             </p>
           )}
+
+          {getCurrentNestedCategoryName() && (
+            <p className="text-md text-gray-600">
+              Finish: {getCurrentNestedCategoryName()}
+            </p>
+          )}
           
           <p className="text-gray-600 text-base sm:text-lg max-w-3xl mx-auto mt-4">
             {searchTerm 
@@ -601,7 +625,7 @@ const renderCategoryBadges = (product) => {
           </p>
 
           {/* Active Filters Display */}
-          {(urlCategory || urlSubCategory || urlType || urlFabricType || searchTerm) && (
+          {(urlCategory || urlSubCategory || urlType || urlFabricType || urlNestedCategory || searchTerm) && (
             <div className="mt-4 flex flex-wrap justify-center items-center gap-3">
               <span className="text-sm text-gray-500">Active filters:</span>
               
@@ -614,6 +638,7 @@ const renderCategoryBadges = (product) => {
                       if (urlSubCategory) params.append('subCategory', urlSubCategory);
                       if (urlType) params.append('type', urlType);
                       if (urlFabricType) params.append('fabricType', urlFabricType);
+                      if (urlNestedCategory) params.append('nestedCategory', urlNestedCategory);
                       window.location.href = `/products?${params.toString()}`;
                     }}
                     className="text-gray-300 hover:text-white"
@@ -632,6 +657,7 @@ const renderCategoryBadges = (product) => {
                       if (urlCategory) params.append('category', urlCategory);
                       if (urlType) params.append('type', urlType);
                       if (urlFabricType) params.append('fabricType', urlFabricType);
+                      if (urlNestedCategory) params.append('nestedCategory', urlNestedCategory);
                       window.location.href = `/products?${params.toString()}`;
                     }}
                     className="text-gray-300 hover:text-white"
@@ -650,6 +676,7 @@ const renderCategoryBadges = (product) => {
                       if (urlCategory) params.append('category', urlCategory);
                       if (urlSubCategory) params.append('subCategory', urlSubCategory);
                       if (urlFabricType) params.append('fabricType', urlFabricType);
+                      if (urlNestedCategory) params.append('nestedCategory', urlNestedCategory);
                       window.location.href = `/products?${params.toString()}`;
                     }}
                     className="text-gray-300 hover:text-white"
@@ -668,6 +695,26 @@ const renderCategoryBadges = (product) => {
                       if (urlCategory) params.append('category', urlCategory);
                       if (urlSubCategory) params.append('subCategory', urlSubCategory);
                       if (urlType) params.append('type', urlType);
+                      if (urlNestedCategory) params.append('nestedCategory', urlNestedCategory);
+                      window.location.href = `/products?${params.toString()}`;
+                    }}
+                    className="text-gray-300 hover:text-white"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+
+              {urlNestedCategory && (
+                <span className="px-3 py-1 bg-gray-500 text-white text-sm rounded-full flex items-center gap-1 border border-gray-400">
+                  {getCurrentNestedCategoryName()}
+                  <button 
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      if (urlCategory) params.append('category', urlCategory);
+                      if (urlSubCategory) params.append('subCategory', urlSubCategory);
+                      if (urlType) params.append('type', urlType);
+                      if (urlFabricType) params.append('fabricType', urlFabricType);
                       window.location.href = `/products?${params.toString()}`;
                     }}
                     className="text-gray-300 hover:text-white"
@@ -687,6 +734,7 @@ const renderCategoryBadges = (product) => {
                       if (urlSubCategory) params.append('subCategory', urlSubCategory);
                       if (urlType) params.append('type', urlType);
                       if (urlFabricType) params.append('fabricType', urlFabricType);
+                      if (urlNestedCategory) params.append('nestedCategory', urlNestedCategory);
                       window.location.href = `/products?${params.toString()}`;
                     }}
                     className="text-gray-300 hover:text-white"
@@ -696,7 +744,7 @@ const renderCategoryBadges = (product) => {
                 </span>
               )}
               
-              {(urlCategory || urlSubCategory || urlType || urlFabricType || searchTerm) && (
+              {(urlCategory || urlSubCategory || urlType || urlFabricType || urlNestedCategory || searchTerm) && (
                 <button
                   onClick={clearFilters}
                   className="px-3 py-1 bg-black text-white text-sm rounded-full hover:bg-gray-800 transition-colors border border-gray-700"
@@ -866,11 +914,11 @@ const renderCategoryBadges = (product) => {
                 {searchTerm 
                   ? `No products found for "${searchTerm}". Try different keywords.`
                   : urlCategory
-                  ? `No products available in ${getCurrentCategoryName()}${getCurrentSubCategoryName() ? ` - ${getCurrentSubCategoryName()}` : ''}${getCurrentTypeName() ? ` - ${getCurrentTypeName()}` : ''}${getCurrentFabricTypeName() ? ` - ${getCurrentFabricTypeName()}` : ''}.`
+                  ? `No products available in ${getCurrentCategoryName()}${getCurrentSubCategoryName() ? ` - ${getCurrentSubCategoryName()}` : ''}${getCurrentTypeName() ? ` - ${getCurrentTypeName()}` : ''}${getCurrentFabricTypeName() ? ` - ${getCurrentFabricTypeName()}` : ''}${getCurrentNestedCategoryName() ? ` - ${getCurrentNestedCategoryName()}` : ''}.`
                   : "No products available at the moment."
                 }
               </p>
-              {(searchTerm || urlCategory || urlSubCategory || urlType || urlFabricType) && (
+              {(searchTerm || urlCategory || urlSubCategory || urlType || urlFabricType || urlNestedCategory) && (
                 <button
                   onClick={clearFilters}
                   className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition font-semibold text-base shadow-md hover:shadow-lg border border-gray-700"
