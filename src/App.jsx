@@ -14,7 +14,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPanel from "./components/AdminPanel";
 
 // Pages
-import Home from "./pages/Home";
+import Home from "./pages/Home.jsx";
 import Products from "./pages/Products";
 import Dyed from "./pages/Dyed";
 import Contact from "./pages/contact";
