@@ -14,18 +14,18 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPanel from "./components/AdminPanel";
 
 // Pages
-import Home from "./Pages/Home";
-import Products from "./Pages/Products";
-import Dyed from "./Pages/Dyed";
-import Contact from "./Pages/contact";
-import Fabrics from "./Pages/fabrics";
-import AboutUs from "./Pages/about";
+import Home from "./pages/Home";
+import Products from "./pages/Products";
+import Dyed from "./pages/Dyed";
+import Contact from "./pages/contact";
+import Fabrics from "./pages/fabrics";
+import AboutUs from "./pages/about";
 
 // Policy Pages
-import PrivacyPolicy from "./Pages/PrivacyPolicy";
-import RefundPolicy from "./Pages/RefundPolicy";
-import ShippingPolicy from "./Pages/ShippingPolicy";
-import TermsConditions from "./Pages/TermsandConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import RefundPolicy from "./pages/RefundPolicy";
+import ShippingPolicy from "./pages/ShippingPolicy";
+import TermsConditions from "./pages/TermsandConditions";
 
 // Context
 import { CartProvider } from "./context/CartContext";
