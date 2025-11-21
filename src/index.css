@@ -1,0 +1,47 @@
+/* ------------------------------------------------------
+   ✅ Import Google Fonts first (must be above Tailwind)
+-------------------------------------------------------*/
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ------------------------------------------------------
+   ✅ Tailwind Directives
+-------------------------------------------------------*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------
+   ✅ Global Reset & Base Styles
+-------------------------------------------------------*/
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  scroll-behavior: smooth;
+  background: linear-gradient(to bottom right, #fffaf0, #ffe4b5);
+  color: #333;
+}
+
+/* ------------------------------------------------------
+   ✅ Custom Scrollbar Styling
+-------------------------------------------------------*/
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d2691e;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8b4513;
+}
