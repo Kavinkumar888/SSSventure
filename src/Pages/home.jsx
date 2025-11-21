@@ -5,7 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const home = () => {
+const Home = () => {
   const heroRef = useRef(null);
   const sectionRef = useRef(null);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -237,4 +237,4 @@ const home = () => {
   );
 };
 
-export default home;
+export default Home;
