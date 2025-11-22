@@ -7,4 +7,17 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['lucide-react'],
+          animation: ['gsap'],
+          router: ['react-router-dom']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+  }
 })

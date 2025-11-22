@@ -24,7 +24,7 @@ const Home = () => {
       subtitle: "for modern fashion brands.",
     },
     {
-      url: "./hero2.png",
+      url: "./home.jpg",
       title: "Sustainable &",
       highlight: "Eco-Friendly Fabrics",
       subtitle: "for a better tomorrow.",
