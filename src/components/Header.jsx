@@ -27,8 +27,7 @@ const Header = () => {
 
   // Synchronized Navigation structure - UPDATED WITH GFARMENT
   const navItems = [
-    { path: "/", label: "Home", key: "home" },
-    { path: "/gfarment", label: "Gfarment Manufacturing", key: "gfarment" }, // ✅ ADDED HERE
+    { path: "/", label: "Home", key: "home" },// ✅ ADDED HERE
     { 
       path: "/products?category=fabrics%20structure",
       label: "Fabrics Structure",
@@ -134,7 +133,8 @@ const Header = () => {
           ]
         }
       ]
-    }
+    },
+    { path: "/gfarment", label: "Gfarment Manufacturing", key: "gfarment"}, 
   ];
 
   const handleSearch = (e) => {

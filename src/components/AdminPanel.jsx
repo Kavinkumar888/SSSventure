@@ -1,4 +1,4 @@
-// src/components/AdminPanel.js
+// src/components/AdminPanel.js - Updated version
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import SimpleImage from './SimpleImage';
@@ -201,11 +201,38 @@ const AdminPanel = () => {
     }
   };
 
+  // UPDATED: Handle file change with 1MB size limit
   const handleFileChange = (e) => {
-    setFormData(prev => ({
-      ...prev,
-      image: e.target.files[0]
-    }));
+    const file = e.target.files[0];
+    
+    if (file) {
+      // Check file size (1MB = 1,048,576 bytes)
+      const maxSize = 1 * 1024 * 1024; // 1MB in bytes
+      
+      if (file.size > maxSize) {
+        alert('❌ Image size must be less than 1MB. Please choose a smaller image.');
+        e.target.value = ''; // Clear the file input
+        return;
+      }
+      
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('❌ Please select a valid image file (JPEG, JPG, PNG, or WebP).');
+        e.target.value = ''; // Clear the file input
+        return;
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        image: file
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        image: null
+      }));
+    }
   };
 
   // Edit product function
@@ -456,22 +483,6 @@ const AdminPanel = () => {
     }
   };
 
-  // Test backend connection manually
-  const testBackendConnection = async () => {
-    console.log('🧪 Testing backend connection...');
-    try {
-      await productAPI.healthCheck();
-      const products = await productAPI.getProducts();
-      console.log('✅ Backend tests passed!', products);
-      alert('Backend connection successful!');
-      setBackendStatus('connected');
-    } catch (error) {
-      console.error('❌ Backend tests failed:', error);
-      alert('Backend connection failed: ' + error.message);
-      setBackendStatus('disconnected');
-    }
-  };
-
   // Helper function to format category names for display
   const formatCategoryName = (name) => {
     return name.split(' ').map(word => 
@@ -520,17 +531,8 @@ const AdminPanel = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Product Management</h1>
             <p className="text-gray-600">Welcome, {user?.name}</p>
-            <p className="text-sm text-gray-500">
-              MongoDB Image Storage Enabled
-            </p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={testBackendConnection}
-              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-600 transition-colors border border-purple-500 text-sm"
-            >
-              Test Backend
-            </button>
             <button
               onClick={handleLogout}
               className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600 transition-colors border border-gray-600"
@@ -538,33 +540,6 @@ const AdminPanel = () => {
               Logout
             </button>
           </div>
-        </div>
-        
-        {/* Backend Status Indicator */}
-        <div className={`mb-6 p-4 rounded-lg border ${
-          backendStatus === 'connected' 
-            ? 'bg-green-50 border-green-200 text-green-800' 
-            : backendStatus === 'disconnected'
-            ? 'bg-red-50 border-red-200 text-red-800'
-            : 'bg-yellow-50 border-yellow-200 text-yellow-800'
-        }`}>
-          <div className="flex items-center">
-            <span className={`w-3 h-3 rounded-full mr-2 ${
-              backendStatus === 'connected' ? 'bg-green-500' :
-              backendStatus === 'disconnected' ? 'bg-red-500' :
-              'bg-yellow-500'
-            }`}></span>
-            <span className="font-medium">
-              {backendStatus === 'connected' && '✅ MongoDB Backend Connected - Live Mode'}
-              {backendStatus === 'disconnected' && '❌ Backend Offline - Local Mode'}
-              {backendStatus === 'checking' && '🔄 Checking Backend Connection...'}
-            </span>
-          </div>
-          <p className="text-sm mt-1">
-            {backendStatus === 'connected' && 'Images are being stored in MongoDB as binary data'}
-            {backendStatus === 'disconnected' && 'Products are being saved locally only'}
-            {backendStatus === 'checking' && 'Testing connection to MongoDB backend...'}
-          </p>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -798,6 +773,7 @@ const AdminPanel = () => {
                 </div>
               </div>
 
+              {/* UPDATED: Image upload with size limit info */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Product Image {!editingProduct && '*'}
@@ -805,14 +781,14 @@ const AdminPanel = () => {
                 <input
                   id="imageInput"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg, image/jpg, image/png, image/webp"
                   onChange={handleFileChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-gray-600"
                   required={!editingProduct}
                 />
                 {formData.image && (
                   <p className="text-green-600 text-sm mt-1">
-                    ✅ Selected: {formData.image.name}
+                    ✅ Selected: {formData.image.name} ({(formData.image.size / 1024).toFixed(1)} KB)
                   </p>
                 )}
                 {editingProduct && !formData.image && (
@@ -821,7 +797,7 @@ const AdminPanel = () => {
                   </p>
                 )}
                 <p className="text-gray-500 text-xs mt-1">
-                  Supported formats: JPG, PNG, WebP. Max size: 10MB
+                  Supported formats: JPG, PNG, WebP. Max size: 1MB
                 </p>
               </div>
 
@@ -858,8 +834,6 @@ const AdminPanel = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-800">
                 Existing Products ({products.length})
-                {backendStatus === 'connected' && <span className="text-green-600 text-sm ml-2">● MongoDB</span>}
-                {backendStatus === 'disconnected' && <span className="text-red-600 text-sm ml-2">● Local</span>}
               </h2>
               <div className="flex gap-2">
                 <button
@@ -906,11 +880,6 @@ const AdminPanel = () => {
                             {formatCategoryName(product.nestedCategory)}
                           </span>
                         )}
-                        <span className={`text-xs px-2 py-1 rounded border ${
-                          backendStatus === 'connected' ? 'bg-green-600 text-white border-green-700' : 'bg-gray-600 text-white border-gray-700'
-                        }`}>
-                          {backendStatus === 'connected' ? 'MongoDB' : 'Local'}
-                        </span>
                         {product.updatedAt && (
                           <span className="bg-green-600 text-white text-xs px-2 py-1 rounded border border-green-700">
                             Edited
