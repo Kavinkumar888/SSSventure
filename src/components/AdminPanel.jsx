@@ -1,8 +1,8 @@
-// src/components/AdminPanel.js - Updated version
+// src/components/AdminPanel.js - COMPLETE FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import SimpleImage from './SimpleImage';
-import { productAPI } from '../api/productAPI';
+import productAPI from '../api/productAPI'; // ✅ FIXED IMPORT
 
 const AdminPanel = () => {
   const [products, setProducts] = useState([]);

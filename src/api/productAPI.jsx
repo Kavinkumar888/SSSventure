@@ -1,117 +1,122 @@
-// src/api/productAPI.jsx
-const API_BASE_URL = 'http://localhost:5000/api';
+// src/api/productAPI.js
 
-// Helper function to handle API calls
+// ✅ Use Vite environment variable (correct way for Vite + Hostinger)
+const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
+
+// Debug
+console.log("🌐 Connected to backend:", API_BASE_URL);
+
+// Helper for GET/DELETE requests
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+  console.log("🔍 API Request:", url);
+
   try {
     const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
       ...options,
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error(`API request failed for ${endpoint}:`, error);
+    console.error("❌ API Failed:", url, error);
     throw error;
   }
 };
 
-// Health check
-export const healthCheck = async () => {
-  return apiRequest('/health');
-};
+// ----- HEALTH CHECK -----
+export const healthCheck = () => apiRequest("/health");
 
-// Get all products
-export const getProducts = async () => {
-  return apiRequest('/products');
-};
+// ----- GET ALL PRODUCTS -----
+export const getProducts = () => apiRequest("/products");
 
-// Get product by ID
-export const getProductById = async (id) => {
-  return apiRequest(`/products/${id}`);
-};
+// ----- GET PRODUCT -----
+export const getProductById = (id) => apiRequest(`/products/${id}`);
 
-// Create new product with image
+// ----- CREATE PRODUCT -----
 export const createProduct = async (productData) => {
   const formData = new FormData();
-  
-  // Append all product fields
-  Object.keys(productData).forEach(key => {
-    if (key === 'specifications') {
+
+  Object.keys(productData).forEach((key) => {
+    if (key === "specifications") {
       formData.append(key, JSON.stringify(productData[key]));
-    } else if (key === 'image' && productData[key] instanceof File) {
-      formData.append('image', productData[key]);
+    } else if (key === "image" && productData[key]) {
+      formData.append("image", productData[key]);
     } else {
       formData.append(key, productData[key]);
     }
   });
 
-  const response = await fetch(`${API_BASE_URL}/products`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/products`, {
+      method: "POST",
+      body: formData,
+    });
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server Error: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("❌ Create Product Failed:", error);
+    throw error;
   }
-
-  return await response.json();
 };
 
-// Update product with image
+// ----- UPDATE PRODUCT -----
 export const updateProduct = async (id, productData) => {
   const formData = new FormData();
-  
-  // Append all product fields
-  Object.keys(productData).forEach(key => {
-    if (key === 'specifications') {
+
+  Object.keys(productData).forEach((key) => {
+    if (key === "specifications") {
       formData.append(key, JSON.stringify(productData[key]));
-    } else if (key === 'image' && productData[key] instanceof File) {
-      formData.append('image', productData[key]);
+    } else if (key === "image" && productData[key]) {
+      formData.append("image", productData[key]);
     } else {
       formData.append(key, productData[key]);
     }
   });
 
-  const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-    method: 'PUT',
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+      method: "PUT",
+      body: formData,
+    });
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server Error: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("❌ Update Product Failed:", error);
+    throw error;
   }
-
-  return await response.json();
 };
 
-// Delete product
-export const deleteProduct = async (id) => {
-  return apiRequest(`/products/${id}`, {
-    method: 'DELETE',
-  });
-};
+// ----- DELETE PRODUCT -----
+export const deleteProduct = (id) =>
+  apiRequest(`/products/${id}`, { method: "DELETE" });
 
-// Get products by category
-export const getProductsByCategory = async (category) => {
-  return apiRequest(`/products/category/${category}`);
-};
+// ----- CATEGORY FILTER -----
+export const getProductsByCategory = (category) =>
+  apiRequest(`/products/category/${category}`);
 
-// Search products
-export const searchProducts = async (query) => {
-  return apiRequest(`/products/search/${query}`);
-};
+// ----- SEARCH -----
+export const searchProducts = (query) =>
+  apiRequest(`/products/search/${query}`);
 
-// Named export for productAPI object
+// ----- EXPORT -----
 export const productAPI = {
   healthCheck,
   getProducts,
@@ -120,8 +125,7 @@ export const productAPI = {
   updateProduct,
   deleteProduct,
   getProductsByCategory,
-  searchProducts
+  searchProducts,
 };
 
-// Default export
 export default productAPI;

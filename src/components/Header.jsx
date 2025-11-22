@@ -134,7 +134,7 @@ const Header = () => {
         }
       ]
     },
-    { path: "/gfarment", label: "Gfarment Manufacturing", key: "gfarment"}, 
+    { path: "/gfarment", label: "Garment Manufacturing", key: "gfarment"}, 
   ];
 
   const handleSearch = (e) => {
